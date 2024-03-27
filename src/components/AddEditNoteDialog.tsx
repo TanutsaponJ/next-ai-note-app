@@ -20,32 +20,50 @@ import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import LoadingButton from "./ui/loading-button";
 import { useRouter } from "next/navigation";
+import { Note } from "@prisma/client";
 
-interface AddNoteDialogProps {
+interface AddNoteEditDialogProps {
   open: boolean;
   setOpen: (open: boolean) => void;
+  noteToEdit?: Note;
 }
 
-export default function AddNoteDialog({ open, setOpen }: AddNoteDialogProps) {
+export default function AddNoteDialog({
+  open,
+  setOpen,
+  noteToEdit,
+}: AddNoteEditDialogProps) {
   const router = useRouter();
 
   const form = useForm<CreateNoteScheme>({
     resolver: zodResolver(createNoteScheme),
     defaultValues: {
-      title: "",
-      content: "",
+      title: noteToEdit?.title || "",
+      content: noteToEdit?.content || "",
     },
   });
 
   async function onSubmit(input: CreateNoteScheme) {
     try {
-      const res = await fetch("/api/notes", {
-        method: "POST",
-        body: JSON.stringify(input),
-      });
+      if (noteToEdit) {
+        const res = await fetch("/api/notes", {
+          method: "PUT",
+          body: JSON.stringify({
+            id: noteToEdit.id,
+            ...input,
+          }),
+        });
+        if (!res.ok) throw Error("Status code: " + res.status);
+      } else {
+        const res = await fetch("/api/notes", {
+          method: "POST",
+          body: JSON.stringify(input),
+        });
 
-      if (!res.ok) throw Error("Status code: " + res.status);
-      form.reset();
+        if (!res.ok) throw Error("Status code: " + res.status);
+        form.reset();
+      }
+
       router.refresh();
       setOpen(false);
     } catch (error) {
